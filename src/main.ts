@@ -1,6 +1,8 @@
 // Entry point of project
 
+import { makePlayer } from './entities'
 import {k} from './kaboomCtx'
+import { makeMap } from './utils'
 
 async function gameSetup() {
     // Cargamos sprites
@@ -10,6 +12,7 @@ async function gameSetup() {
         sliceY: 10,  // Sprites in Y axis
         anims: {  // mobs
             kirbIdle: 0,  // Every attr of the object is a custom name for a mob
+                        // or animation
             kirbInhaling: 1,  // The number is the position of the sprite...
             kirbFull: 2, //...from top left to bottom right.
 
@@ -26,6 +29,13 @@ async function gameSetup() {
 
     k.loadSprite('level-1','level-1.png')
 
+    // Not usual notation
+    // It replaces the name of the variable: map to level1Layout, and spawnPoints to level1Spawnpoints
+    const {map: level1Layout, spawnPoints: level1SpawnPoints} = await makeMap(
+        k,
+        'level-1'
+    )
+
     // to define a scene
     k.scene('level-1', ()=>{
         k.setGravity(2100)
@@ -40,6 +50,20 @@ async function gameSetup() {
             // this rectanlge will be fixed, not affected by camera movement
             k.fixed()
         ])
+        k.add(level1Layout)
+
+        const kirb = makePlayer(
+            k,
+            level1SpawnPoints.player[0].x,
+            level1SpawnPoints.player[0].y
+        )
+
+        k.add(kirb)
+        k.camScale(k.vec2(0.7))
+        k.onUpdate(()=>{
+            if(kirb.pos.x < level1Layout.pos.x + 432)
+                k.camPos(kirb.pos.x + 500, 800)
+        })
     })
 
     // to go to that scene
