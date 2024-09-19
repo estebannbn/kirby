@@ -1,12 +1,13 @@
-// Entry point of project
+// Entry point of project. Game Setup
 
-import { makePlayer, setControls } from './entities'
+import { makePlayer, setControls, makeFlameEnemy, makeGuyEnemy, makeBirdEnemy } from './entities'
 import {k} from './kaboomCtx'
 import { makeMap } from './utils'
 
 async function gameSetup() {
+
     // Cargamos sprites
-    // Para los assets, por defecto busca la carpeta /public para pararse si es que existe
+    // Por defecto busca la carpeta /public para pararse si es que existe
     k.loadSprite('assets','./kirby-like.png',{
         sliceX: 9,  // Sprites in X axis
         sliceY: 10,  // Sprites in Y axis
@@ -36,11 +37,12 @@ async function gameSetup() {
         'level-1'
     )
 
+
     // to define a scene
     k.scene('level-1', ()=>{
         k.setGravity(2100)
 
-        // we add elements to the game
+        // we add elements to the game      
         k.add([
             // we add a rectangle that fills the screen
             // parameters are the width and height, returned from those functions
@@ -50,6 +52,7 @@ async function gameSetup() {
             // this rectanlge will be fixed, not affected by camera movement
             k.fixed()
         ])
+
         k.add(level1Layout)
 
         const kirb = makePlayer(
@@ -65,6 +68,19 @@ async function gameSetup() {
             if(kirb.pos.x < level1Layout.pos.x + 432)
                 k.camPos(kirb.pos.x + 500, 870)
         })
+
+        for(const flame of level1SpawnPoints.flame){
+            makeFlameEnemy(k,flame.x,flame.y)
+        }
+
+        for(const guy of level1SpawnPoints.guy){
+            makeGuyEnemy(k,guy.x,guy.y)
+        }
+
+        for(const bird of level1SpawnPoints.bird){
+            const possibleSpeeds = [100,200,300]
+            makeBirdEnemy(k,bird.x,bird.y,possibleSpeeds[Math.floor(Math.random() * possibleSpeeds.length)])
+        }
     })
 
     // to go to that scene

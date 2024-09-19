@@ -226,6 +226,8 @@ export function makeFlameEnemy(k: KaboomCtx, posX: number, posY: number){
         'enemy'
     ])
 
+    makeInhalable(k, flame)
+
     // When it turns to idle, will wait 1 second and jump again
     flame.onStateEnter('idle',async ()=>{
         await k.wait(1)
@@ -235,4 +237,105 @@ export function makeFlameEnemy(k: KaboomCtx, posX: number, posY: number){
     flame.onStateEnter('jump', ()=>{
         flame.jump(1000)
     })
+
+    flame.onStateUpdate('jump', ()=>{
+        // isGrounded is a Kaboom function which returns true when the object is on a plataform
+        if(flame.isGrounded()){
+            flame.enterState('idle')
+        }
+    })
+    return flame
+}
+
+export function makeGuyEnemy(k: KaboomCtx, posX: number, posY: number){
+    const guy = k.add([
+        k.sprite('assets',{anim:'guyWalk'}),
+        k.scale(scale),
+        k.pos(posX * scale, posY * scale),
+        k.area({
+            shape: new k.Rect(k.vec2(4,6),8,10),
+            collisionIgnore: ['enemy']
+        }),
+        k.body(),
+        k.state('idle',['idle','jump', 'left','right']),
+        {isInhalable: false, speed: 100},
+        'enemy'
+    ])
+
+    makeInhalable(k,guy)
+
+    guy.onStateEnter('idle',async()=>{
+        await k.wait(1)
+        guy.enterState('left')
+    })
+
+    guy.onStateEnter('left',async()=>{
+        guy.flipX = false
+        await k.wait(2)
+        guy.enterState('right')
+    })
+
+    guy.onStateUpdate('left',()=>{
+        guy.move(-guy.speed,0)
+    })
+
+    guy.onStateEnter('right', async()=>{
+        guy.flipX = true,
+        await k.wait(2)
+        guy.enterState('left')
+    })
+
+    guy.onStateUpdate('right',()=>{
+        guy.move(guy.speed,0)
+    })
+    return guy
+}
+export function makeInhalable(k: KaboomCtx, enemy: GameObj){
+    enemy.onCollide('inhaleZone', ()=>{
+        enemy.isInhalable = true
+    })
+
+    enemy.onCollideEnd('inhaleZone', ()=> {
+        enemy.isInhalable = false
+    })
+
+    enemy.onCollide('shootingStar', (shootingStar: GameObj)=>{
+        k.destroy(enemy)
+        k.destroy(shootingStar)
+    })
+
+    const playerRef = k.get('player')[0]
+    enemy.onUpdate(()=>{
+        if(playerRef.isInhaling && enemy.isInhalable){
+            if(playerRef.direction === 'right'){
+                enemy.move(-800,0)
+            }else{
+                enemy.move(800,0)
+            }
+        }
+    })
+}
+
+export function makeBirdEnemy(
+    k: KaboomCtx,
+    posX: number,
+    posY: number,
+    speed:number
+){
+    const bird = k.add([
+        k.sprite('assets',{anim:'bird'}),
+        k.scale(scale),
+        k.pos(posX * scale, posY * scale),
+        k.area({
+            shape: new k.Rect(k.vec2(4,6),8,10),
+            collisionIgnore: ['enemy']
+        }),
+        k.body({isStatic: true}),
+        k.move(k.LEFT,speed),
+        k.offscreen({destroy: true, distance: 400}),
+        'enemy'
+    ])
+    makeInhalable(k,bird)
+
+    return bird
 }
