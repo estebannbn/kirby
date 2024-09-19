@@ -1,8 +1,22 @@
 // Logic for players, mobs, enemies
 
-import { GameObj, KaboomCtx } from "kaboom";
+import { BodyComp, GameObj, KaboomCtx, OpacityComp, ScaleComp, SpriteComp, PosComp, DoubleJumpComp, HealthComp } from "kaboom";
 import { scale } from "./constants";
 
+type PlayerGameObj = GameObj<
+    SpriteComp &
+    BodyComp &
+    PosComp &
+    ScaleComp &
+    DoubleJumpComp &
+    HealthComp &
+    OpacityComp & {
+        speed: number,
+        direction: string,
+        isInhaling: boolean,
+        isFull: boolean
+    }
+>
 export function makePlayer(k: KaboomCtx, posX: number, posY: number){
     const player = k.make([
         // We define the animation of the player. We can find all in main.ts, in gameSetup()
@@ -121,4 +135,104 @@ export function makePlayer(k: KaboomCtx, posX: number, posY: number){
     })
 
     return player
+}
+
+export function setControls(k: KaboomCtx, player: PlayerGameObj){
+    // k.get() returns an array with all elements with that tag
+    // in this case, only one does have it
+    const inhaleEffectRef = k.get('inhaleEffect')[0]
+
+    k.onKeyDown( (key)=>{
+        switch(key){
+            case 'left':
+                player.direction = 'left'
+                // flipX property is offered by Kaboom if the player has a sprite
+                player.flipX = true
+                // player.move(horizontalSPeed,verticalSpeed)
+                player.move(-player.speed, 0)
+                break
+            case 'right':
+                player.direction = 'right'
+                player.flipX = false
+                player.move(player.speed, 0)
+                break
+            case 'x':
+                if(player.isFull){
+                    // Plays an animation
+                    player.play('kirbFull')
+                    inhaleEffectRef.opacity = 0
+                    break
+                }
+                // Following lines will not be executed if player.isFull bc of the break
+                player.isInhaling = true
+                player.play('kirbInhaling')
+                inhaleEffectRef.opacity = 1
+        }
+    })
+
+    k.onKeyPress((key)=>{
+        if(key === 'z') player.doubleJump()
+    })
+
+    k.onKeyRelease((key)=>{
+        if(key === 'x'){
+            if(player.isFull){
+                player.play('kirbInhaling')
+                const shootingStar = k.add([
+                    k.sprite('assets',{
+                        anim: 'shootingStar',
+                        // Default direction of the anim is left, so if
+                        // player.direction === 'right, we need to flipX
+                        flipX: player.direction === 'right'
+                    }),
+                    k.area({shape: new k.Rect(k.vec2(5,4),6,6)}),
+                    k.pos(
+                        player.direction === 'left' ? player.pos.x - 80 : player.pos.x + 80,
+                        player.pos.y + 5
+                    ),
+                    k.scale(scale),
+                    player.direction === 'left'
+                        ? k.move(k.LEFT,800)
+                        : k.move(k.RIGHT,800),
+                    'shootingStar'
+                ])
+                shootingStar.onCollide('platform',()=> k.destroy(shootingStar))
+                player.isFull = false
+
+                // We will wait 1 second to return to this animation
+                k.wait(1,()=> player.play('kirbIdle'))
+                return
+            }
+
+            inhaleEffectRef.opacity = 0
+            player.isInhaling = false
+            player.play('kirbIdle')
+        } 
+    })
+}
+
+
+export function makeFlameEnemy(k: KaboomCtx, posX: number, posY: number){
+    const flame = k.add([
+        k.sprite('assets',{anim:'flame'}),
+        k.scale(scale),
+        k.pos(posX * scale, posY * scale),
+        k.area({
+            shape: new k.Rect(k.vec2(4,6),8,10),
+            collisionIgnore: ['enemy']
+        }),
+        k.body(),
+        k.state('idle',['idle','jump']),
+        'enemy'
+    ])
+
+    // When it turns to idle, will wait 1 second and jump again
+    flame.onStateEnter('idle',async ()=>{
+        await k.wait(1)
+        flame.enterState('jump')
+    })
+
+    flame.onStateEnter('jump', ()=>{
+        flame.jump(1000)
+    })
 }
